@@ -144,15 +144,18 @@ sig_handle (lua_State *L, lua_Debug *LPOSIX_UNUSED (ar))
 
 		/* Call handler with signal number */
 		lua_pushinteger(L, signalno);
-		if (lua_pcall(L, 1, 0, 0) != 0)
+		if (lua_pcall(L, 1, 0, 0) != 0) {
 			fprintf(stderr,"error in signal handler %ld: %s\n", (long)signalno, lua_tostring(L,-1));
+			lua_pop(L, 1);  /* pop error message */
+		}
 	}
 	signal_count = 0;  /* reset global to initial state */
+
+	lua_pop(L, 1);  /* pop handlers table */
 
 	/* Having run the Lua signal handler, restore original signal mask */
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }
-
 
 static void
 sig_postpone (int i)
