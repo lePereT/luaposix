@@ -125,6 +125,8 @@ sig_handle (lua_State *L, lua_Debug *LPOSIX_UNUSED (ar))
 {
 	/* Block all signals until we have run the Lua signal handler */
 	sigset_t mask, oldmask;
+	int top = lua_gettop(L);              /* save stack top */
+
 	sigfillset(&mask);
 	sigprocmask(SIG_SETMASK, &mask, &oldmask);
 
@@ -145,8 +147,9 @@ sig_handle (lua_State *L, lua_Debug *LPOSIX_UNUSED (ar))
 		/* Call handler with signal number */
 		lua_pushinteger(L, signalno);
 		if (lua_pcall(L, 1, 0, 0) != 0) {
-			fprintf(stderr,"error in signal handler %ld: %s\n", (long)signalno, lua_tostring(L,-1));
-			lua_pop(L, 1);  /* pop error message */
+			fprintf(stderr, "error in signal handler %ld: %s\n",
+					(long)signalno, lua_tostring(L, -1));
+			lua_pop(L, 1);  /* pop error object */
 		}
 	}
 	signal_count = 0;  /* reset global to initial state */
@@ -155,7 +158,11 @@ sig_handle (lua_State *L, lua_Debug *LPOSIX_UNUSED (ar))
 
 	/* Having run the Lua signal handler, restore original signal mask */
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
+
+	/* Restore the Lua stack to its original state */
+	lua_settop(L, top);
 }
+
 
 static void
 sig_postpone (int i)
