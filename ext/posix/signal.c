@@ -128,8 +128,6 @@ sig_handle (lua_State *L, lua_Debug *LPOSIX_UNUSED (ar))
 	sigfillset(&mask);
 	sigprocmask(SIG_SETMASK, &mask, &oldmask);
 	
-	int top = lua_gettop(L);              /* save stack top */
-
 	lua_sethook(L, NULL, 0, 0);
 
 	/* Get signal handlers table */
@@ -154,8 +152,7 @@ sig_handle (lua_State *L, lua_Debug *LPOSIX_UNUSED (ar))
 	}
 	signal_count = 0;  /* reset global to initial state */
 
-    /* Restore original stack height (removes handlers table and any strays) */
-	lua_settop(L, top);
+    lua_pop(L, 1);  /* pop handlers table; stack back to original depth */
 
 	/* Having run the Lua signal handler, restore original signal mask */
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
@@ -179,8 +176,11 @@ sig_postpone (int i)
 	lua_sethook(signalL, sig_handle, LUA_MASKCALL | LUA_MASKRET | LUA_MASKCOUNT, 1);
 	defer_signal--;
 	/* re-raise any pending signals */
-	if (defer_signal == 0 && signal_pending != 0)
-		raise (signal_pending);
+	if (defer_signal == 0 && signal_pending != 0) {
+		int pending = signal_pending;
+		signal_pending = 0;
+		raise(pending);
+	}
 }
 
 
