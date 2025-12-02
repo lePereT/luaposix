@@ -125,10 +125,10 @@ sig_handle (lua_State *L, lua_Debug *LPOSIX_UNUSED (ar))
 {
 	/* Block all signals until we have run the Lua signal handler */
 	sigset_t mask, oldmask;
-	int top = lua_gettop(L);              /* save stack top */
-
 	sigfillset(&mask);
 	sigprocmask(SIG_SETMASK, &mask, &oldmask);
+	
+	int top = lua_gettop(L);              /* save stack top */
 
 	lua_sethook(L, NULL, 0, 0);
 
@@ -154,13 +154,11 @@ sig_handle (lua_State *L, lua_Debug *LPOSIX_UNUSED (ar))
 	}
 	signal_count = 0;  /* reset global to initial state */
 
-	lua_pop(L, 1);  /* pop handlers table */
+    /* Restore original stack height (removes handlers table and any strays) */
+	lua_settop(L, top);
 
 	/* Having run the Lua signal handler, restore original signal mask */
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
-
-	/* Restore the Lua stack to its original state */
-	lua_settop(L, top);
 }
 
 
